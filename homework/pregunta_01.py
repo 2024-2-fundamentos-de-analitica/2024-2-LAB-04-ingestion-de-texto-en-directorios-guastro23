@@ -5,8 +5,12 @@
 Escriba el codigo que ejecute la accion solicitada en cada pregunta.
 """
 
-
+import os
+import zipfile
+import glob
+import pandas as pd
 def pregunta_01():
+
     """
     La información requerida para este laboratio esta almacenada en el
     archivo "files/input.zip" ubicado en la carpeta raíz.
@@ -71,3 +75,60 @@ def pregunta_01():
 
 
     """
+    
+
+
+  
+# 1. Determinar ruta de este archivo y ruta al ZIP
+    base_dir = os.path.dirname(__file__)        # Carpeta donde está pregunta_01.py
+    repo_root = os.path.join(base_dir, "..")      # Sube un nivel: raíz del repo
+    zip_path  = os.path.join(repo_root, "files", "input.zip")
+    
+    # 2. Descomprimir input.zip en la raíz del repositorio (creando carpeta input/)
+    input_folder = os.path.join(repo_root, "input")
+    if not os.path.exists(input_folder):
+        with zipfile.ZipFile(zip_path, 'r') as z:
+            z.extractall(repo_root)
+    
+    # 3. Crear la carpeta output/ si no existe
+    output_folder = os.path.join(repo_root, "files", "output")
+    os.makedirs(output_folder, exist_ok=True)
+    
+    # 4. Función auxiliar para leer archivos de un directorio (train o test)
+    def build_dataset(split="train"):
+        # Ruta a la carpeta (train/ o test/) dentro de input/
+        split_folder = os.path.join(input_folder, split)
+        
+        # Subcarpetas: negative, positive, neutral
+        sentiments = ["negative", "positive", "neutral"]
+        
+        data = []
+        for sentiment in sentiments:
+            sentiment_folder = os.path.join(split_folder, sentiment)
+            # Buscar todos los .txt
+            txt_files = glob.glob(os.path.join(sentiment_folder, "*.txt"))
+            
+            for txt_file in txt_files:
+                # Leer todo el contenido del archivo como "phrase"
+                with open(txt_file, "r", encoding="utf-8") as f:
+                    phrase = f.read().strip()
+                
+                # Agregar un registro a la lista (se usa la clave "target" en lugar de "sentiment")
+                data.append({
+                    "phrase": phrase,
+                    "target": sentiment
+                })
+        
+        # Convertir a DataFrame con las columnas "phrase" y "target"
+        df = pd.DataFrame(data, columns=["phrase", "target"])
+        return df
+    
+    # 5. Construir y guardar train_dataset.csv
+    train_df = build_dataset(split="train")
+    train_csv_path = os.path.join(output_folder, "train_dataset.csv")
+    train_df.to_csv(train_csv_path, index=False)
+    
+    # 6. Construir y guardar test_dataset.csv
+    test_df = build_dataset(split="test")
+    test_csv_path = os.path.join(output_folder, "test_dataset.csv")
+    test_df.to_csv(test_csv_path, index=False)
